@@ -1,20 +1,19 @@
-// weread_patch_safe.js
-if ($response.body) {
-  let body = JSON.parse($response.body);
+// 微信读书屏蔽升级弹窗脚本
+try {
+  let obj = JSON.parse($response.body);
 
-  // 只改动已知与强制更新相关的字段
-  body.upgrade = 0;
-  body.notice_title = "";
-  body.notice_msg = "";
+  // 安全地清空升级字段
+  if (obj.upgrade !== undefined) obj.upgrade = 0;
+  if (obj.notice_title !== undefined) obj.notice_title = "";
+  if (obj.notice_msg !== undefined) obj.notice_msg = "";
 
-  if (body.configsets) {
-    if (typeof body.configsets.upgrade === "number") body.configsets.upgrade = 0;
-    if (typeof body.configsets.notice_type === "number") body.configsets.notice_type = 0;
-    if (typeof body.configsets.notice_msg === "string") body.configsets.notice_msg = "";
-    if (typeof body.configsets.notice_title === "string") body.configsets.notice_title = "";
+  if (obj.configsets && typeof obj.configsets === 'object') {
+    obj.configsets.upgrade = 0;
+    obj.configsets.notice_type = 0;
   }
 
-  $done({ body: JSON.stringify(body) });
-} else {
+  $done({ body: JSON.stringify(obj) });
+} catch (e) {
+  // 如果不是 JSON，原样返回，避免闪退
   $done({});
 }
