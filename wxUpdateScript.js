@@ -1,5 +1,5 @@
 // weread_patch.js
-//https://raw.githubusercontent.com/keiseoi/weread_UpdateBlock/refs/heads/main/wxUpdateScript.js
+// https://raw.githubusercontent.com/keiseoi/weread_UpdateBlock/refs/heads/main/wxUpdateScript.js
 if ($response.body) {
   let body = JSON.parse($response.body);
 
