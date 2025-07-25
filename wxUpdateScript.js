@@ -1,74 +1,32 @@
-// wechat-reader-patch.js
-const targetHost = 'i.weread.qq.com';
-const targetPath = '/mobileSync';
+// 适配 Shadowrocket 的 QuantumultX 脚本
+const url = $request?.url || '';
+const method = $request?.method || '';
+let body = $response?.body || '';
 
-function modifyRequestHeaders(headers) {
-    // 修改版本相关头部
-    headers['basever'] = '9.3.5.48';
-    headers['v'] = '9.3.5.48';
-    headers['User-Agent'] = 'WeRead/9.3.5 (iPhone; iOS 18.5; Scale/2.00)';
-    
-    // 添加新版特有头部
-    headers['baggage'] = 'sentry-environment=production,sentry-public_key=c016c3b3e111466b9a76a0cfd42a7235,sentry-release=com.tencent.weread%409.3.5%2B48,sentry-trace_id=51c1ae6750b64a07ae894ff2f5194e0f';
-    headers['sentry-trace'] = '51c1ae6750b64a07ae894ff2f5194e0f-037a3f97bf514aa8-0';
-    
-    // 更新skey (注意：可能需要定期更换)
-    headers['skey'] = 'YmVCtlc0';
-    
-    return headers;
-}
-
-function modifyRequestBody(body) {
+// 处理升级弹窗
+if (method === 'POST' && url.includes('mobileSync') && body.includes('upgrade')) {
     try {
-        const jsonData = JSON.parse(body);
-        
-        // 添加新版特有字段
-        jsonData['localBrowseTab'] = "";
-        jsonData['localCommunityTab'] = "";
-        jsonData['friendReviewSynckey'] = jsonData['reviewTimeline'] || 0;
-        jsonData['preferTab'] = 1;
-        jsonData['chatRemovedSynckey'] = 0;
-        jsonData['wehearSyncKey'] = 0;
-        jsonData['discoverColumnSynckey'] = jsonData['searchSynckey'] || 0;
-        
-        // 移除旧版特有字段
-        delete jsonData['storyfeed'];
-        delete jsonData['shelfLecture'];
-        delete jsonData['reviewRecommend'];
-        delete jsonData['gameSynckey'];
-        delete jsonData['hearPromoteSynckey'];
-        delete jsonData['browse'];
-        delete jsonData['discover'];
-        delete jsonData['marketSyncver'];
-        
-        // 调整某些字段的值
-        if (jsonData['rateSynckey'] > 0) {
-            jsonData['rateSynckey'] -= 1000; // 模拟新版值变化模式
-        }
-        
-        return JSON.stringify(jsonData);
+        const bodyJSON = JSON.parse(body);
+        const { configsets = {} } = bodyJSON;
+
+        // 屏蔽升级提示
+        bodyJSON.gift = true;
+        bodyJSON.giftCount = 6;
+
+        // 关闭各类检测和广告
+        configsets.upgrade = 0;          // 禁用升级
+        configsets.allowScreenshotReport = 0;
+        configsets.metrickit_diagnostic_upload_enabled = 0;
+        configsets.reader_ads_enabled = 0;  // 禁用阅读页广告
+        configsets.showTeenModeAlert = 0;   // 关闭青少年模式提示
+        configsets.notice_title = '屏蔽更新 by Shadowrocket';
+
+        // 返回修改后的响应体（小火箭必须返回对象！）
+        $done({ body: JSON.stringify(bodyJSON) });
     } catch (e) {
-        console.log(`JSON解析错误: ${e}`);
-        return body;
+        console.log(`[WeRead] 响应修改失败: ${e}`);
+        $done({}); // 出错时原样返回
     }
+} else {
+    $done({}); // 非目标请求，不修改
 }
-
-function isTargetRequest(request) {
-    return request.url.includes(targetHost) && 
-           request.url.includes(targetPath) && 
-           request.method === 'POST';
-}
-
-function handleRequest(request) {
-    if (isTargetRequest(request)) {
-        console.log(`处理请求: ${request.url}`);
-        request.headers = modifyRequestHeaders(request.headers);
-        
-        if (request.body) {
-            request.body = modifyRequestBody(request.body);
-        }
-    }
-    return request;
-}
-
-$done(handleRequest($request));
